@@ -138,7 +138,7 @@ public extension AutomaticSettingsViewDSL {
 
     @_disfavoredOverload
     func setting(_ name: String, keyPath: WritableKeyPath<Settings, String>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View {
-        if #available(macOS 12.0, *) {
+        if #available(macOS 12.0, iOS 15.0, *) {
             TextField(
                 name.automaticSettingsTitleCase,
                 text: viewModel.binding(
@@ -172,7 +172,7 @@ public extension AutomaticSettingsViewDSL {
 
     @_disfavoredOverload
     func setting(_ name: String, keyPath: WritableKeyPath<Settings, String?>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View {
-        if #available(macOS 12.0, *) {
+        if #available(macOS 12.0, iOS 15.0, *) {
             TextField(
                 name.automaticSettingsTitleCase,
                 text: Binding(get: {
@@ -188,7 +188,10 @@ public extension AutomaticSettingsViewDSL {
                 }),
                 prompt: Text(name.automaticSettingsTitleCase)
             )
-            .disableAutocorrection(true)
+            #if os(iOS)
+            .autocapitalization(.none)
+            #endif
+            .autocorrectionDisabled()
         } else {
             TextField(
                 name.automaticSettingsTitleCase,
@@ -207,13 +210,13 @@ public extension AutomaticSettingsViewDSL {
             #if os(iOS)
             .autocapitalization(.none)
             #endif
-            .disableAutocorrection(true)
+            .autocorrectionDisabled()
         }
     }
 
     @_disfavoredOverload
     func setting<Number>(_ name: String, keyPath: WritableKeyPath<Settings, Number?>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View where Number: StringConvertibleNumber {
-        if #available(macOS 12.0, *) {
+        if #available(macOS 12.0, iOS 15.0, *) {
             return TextField(
                 name.automaticSettingsTitleCase,
                 text: Binding(get: {
@@ -244,6 +247,57 @@ public extension AutomaticSettingsViewDSL {
                         sideEffect: sideEffect
                     )
                 })
+            )
+            #if os(iOS)
+            .autocapitalization(.none)
+            #endif
+            .disableAutocorrection(true)
+        }
+    }
+    
+    @_disfavoredOverload
+    func setting(_ name: String, keyPath: WritableKeyPath<Settings, Decimal?>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View {
+        if #available(macOS 12.0, iOS 15.0, *) {
+            return TextField(
+                name.automaticSettingsTitleCase,
+                value: viewModel.binding(
+                    keyPath: keyPath,
+                    requiresRestart: requiresRestart,
+                    uniqueIdentifier: uniqueIdentifier,
+                    sideEffect: sideEffect
+                ),
+                format: .number,
+                prompt: Text(name.automaticSettingsTitleCase)
+            )
+            .disableAutocorrection(true)
+        } else {
+            let vs = self.viewModel.current[keyPath: keyPath]
+            return TextField(
+                name.automaticSettingsTitleCase,
+                text: Binding(
+                    get: {
+                        return self.viewModel.current[keyPath: keyPath].map {
+                            let formatter = NumberFormatter()
+                            formatter.numberStyle = .decimal
+                            
+                            if let number = $0 as? NSNumber, let str = formatter.string(from: number) {
+                                return str
+                            } else {
+                                return ""
+                            }
+                        } ?? ""
+                    }, 
+                    set: {
+                        self.viewModel.change(
+                            keyPath: keyPath,
+                            requiresRestart: requiresRestart,
+                            uniqueIdentifier: uniqueIdentifier,
+                            to: $0.automaticSettingsNilIfEmpty
+                                .flatMap { Decimal(string: $0) ?? 0 }!,
+                            sideEffect: sideEffect
+                        )
+                    }
+                )
             )
             #if os(iOS)
             .autocapitalization(.none)

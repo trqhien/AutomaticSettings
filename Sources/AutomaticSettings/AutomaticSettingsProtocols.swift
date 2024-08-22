@@ -27,6 +27,7 @@ public protocol StringConvertibleNumber: AutomaticSettingsFormatSpecifiable {
 
 extension Int: StringConvertibleNumber {}
 extension Float: StringConvertibleNumber {}
+extension Double: StringConvertibleNumber {}
 
 /// Protocol allowing you to customize display of settings options e.g. custom enums
 public protocol SettingsDisplayable: Hashable {
