@@ -21,7 +21,9 @@ public extension AutomaticSettingsViewDSL {
             Form {
                 content()
             }
+            #if os(iOS)
             .navigationBarTitle(label)
+            #endif
         )
     }
 
@@ -136,10 +138,22 @@ public extension AutomaticSettingsViewDSL {
 
     @_disfavoredOverload
     func setting(_ name: String, keyPath: WritableKeyPath<Settings, String>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View {
-        HStack {
-            Text(name.automaticSettingsTitleCase)
-                .fixedSize()
-            Spacer()
+        if #available(macOS 12.0, *) {
+            TextField(
+                name.automaticSettingsTitleCase,
+                text: viewModel.binding(
+                    keyPath: keyPath,
+                    requiresRestart: requiresRestart,
+                    uniqueIdentifier: uniqueIdentifier,
+                    sideEffect: sideEffect
+                ),
+                prompt: Text(name.automaticSettingsTitleCase)
+            )
+            #if os(iOS)
+            .autocapitalization(.none)
+            #endif
+            .disableAutocorrection(true)
+        } else {
             TextField(
                 name.automaticSettingsTitleCase,
                 text: viewModel.binding(
@@ -149,18 +163,33 @@ public extension AutomaticSettingsViewDSL {
                     sideEffect: sideEffect
                 )
             )
+            #if os(iOS)
             .autocapitalization(.none)
+            #endif
             .disableAutocorrection(true)
-            .fixedSize()
         }
     }
 
     @_disfavoredOverload
     func setting(_ name: String, keyPath: WritableKeyPath<Settings, String?>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View {
-        HStack {
-            Text(name.automaticSettingsTitleCase)
-                .fixedSize()
-            Spacer()
+        if #available(macOS 12.0, *) {
+            TextField(
+                name.automaticSettingsTitleCase,
+                text: Binding(get: {
+                    return self.viewModel.current[keyPath: keyPath] ?? ""
+                }, set: {
+                    self.viewModel.change(
+                        keyPath: keyPath,
+                        requiresRestart: requiresRestart,
+                        uniqueIdentifier: uniqueIdentifier,
+                        to: $0.automaticSettingsNilIfEmpty,
+                        sideEffect: sideEffect
+                    )
+                }),
+                prompt: Text(name.automaticSettingsTitleCase)
+            )
+            .disableAutocorrection(true)
+        } else {
             TextField(
                 name.automaticSettingsTitleCase,
                 text: Binding(get: {
@@ -175,19 +204,34 @@ public extension AutomaticSettingsViewDSL {
                     )
                 })
             )
+            #if os(iOS)
             .autocapitalization(.none)
+            #endif
             .disableAutocorrection(true)
-            .fixedSize()
         }
     }
 
     @_disfavoredOverload
     func setting<Number>(_ name: String, keyPath: WritableKeyPath<Settings, Number?>, requiresRestart: Bool = false, sideEffect: (() -> Void)? = nil, uniqueIdentifier: String) -> some View where Number: StringConvertibleNumber {
-        HStack {
-            Text(name.automaticSettingsTitleCase)
-                .fixedSize()
-            Spacer()
-            TextField(
+        if #available(macOS 12.0, *) {
+            return TextField(
+                name.automaticSettingsTitleCase,
+                text: Binding(get: {
+                    return self.viewModel.current[keyPath: keyPath].map { "\($0)" } ?? ""
+                }, set: {
+                    self.viewModel.change(
+                        keyPath: keyPath,
+                        requiresRestart: requiresRestart,
+                        uniqueIdentifier: uniqueIdentifier,
+                        to: $0.automaticSettingsNilIfEmpty.flatMap { Number($0) },
+                        sideEffect: sideEffect
+                    )
+                }),
+                prompt: Text(name.automaticSettingsTitleCase)
+            )
+            .disableAutocorrection(true)
+        } else {
+            return TextField(
                 name.automaticSettingsTitleCase,
                 text: Binding(get: {
                     return self.viewModel.current[keyPath: keyPath].map { "\($0)" } ?? ""
@@ -201,9 +245,10 @@ public extension AutomaticSettingsViewDSL {
                     )
                 })
             )
+            #if os(iOS)
             .autocapitalization(.none)
+            #endif
             .disableAutocorrection(true)
-            .fixedSize()
         }
     }
 
@@ -217,7 +262,11 @@ public extension AutomaticSettingsViewDSL {
                 .font(.footnote)
                 .contextMenu {
                     Button("Copy") {
+                        #if os(macOS)
+                        // NSPasteboard.general
+                        #elseif os(iOS)
                         UIPasteboard.general.string = value
+                        #endif
                     }
                 }
         }
